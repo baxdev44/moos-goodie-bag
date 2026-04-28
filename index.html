@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moos Goodie Bag - Virtual Hat</title>
+    <title>Moos Goodie Bag - Gift Picker</title>
     <style>
-        body { font-family: 'Avenir', Helvetica, Arial, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; width: 340px; }
-        .hat { font-size: 100px; cursor: pointer; transition: 0.3s; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1)); }
+        body { font-family: 'Avenir', Helvetica, Arial, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; width: 380px; margin: 20px; }
+        .hat { font-size: 100px; cursor: pointer; transition: 0.3s; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1)); margin-bottom: 20px; }
         .hat:hover { transform: scale(1.1) rotate(-5deg); }
         .hat.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
         input { width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
         button { background: #333; color: white; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; }
-        #result { margin-top: 20px; font-weight: bold; color: #2c3e50; min-height: 60px; line-height: 1.4; }
+        #result { margin-top: 20px; color: #2c3e50; min-height: 100px; line-height: 1.5; }
+        .gift-title { color: #e74c3c; font-size: 1.3rem; font-weight: bold; display: block; margin-bottom: 10px; }
+        .gift-desc { font-size: 0.95rem; color: #555; font-style: italic; display: block; }
         .hidden { display: none; }
-        #counter { margin-top: 15px; font-size: 0.85rem; color: #95a5a6; }
+        #counter { margin-top: 20px; font-size: 0.85rem; color: #95a5a6; border-top: 1px solid #eee; padding-top: 15px; }
     </style>
 </head>
 <body>
@@ -22,15 +24,15 @@
 <div class="container">
     <div id="login-screen">
         <h2>Moos Goodie Bag</h2>
-        <p>Enter your name to start</p>
-        <input type="text" id="userName" placeholder="Your Name">
+        <p>Gift Picker</p>
+        <input type="text" id="userName" placeholder="Enter your name">
         <button onclick="enterApp()">Join Draw</button>
     </div>
 
     <div id="draw-screen" class="hidden">
         <h3 id="greeting"></h3>
         <div id="hatIcon" class="hat" onclick="pickChit()">🎩</div>
-        <div id="result">Tap the hat to reveal your chit</div>
+        <div id="result">Tap the hat to reveal your gift</div>
         <p id="counter"></p>
     </div>
 </div>
@@ -39,7 +41,6 @@
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { getDatabase, ref, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-    // Firebase Config
     const firebaseConfig = {
         apiKey: "AIzaSyCaZPkub3eDJfLJ1CJldNIy-zMolKn3Wlo",
         authDomain: "moos-goodie-bag.firebaseapp.com",
@@ -56,18 +57,24 @@
     const chitsRef = ref(db, 'hat/availableChits');
 
     const initialChits = [
-        "Something for the Skin", "Something for the Body", "Something for the Honeymoon (Pleasure)", 
-        "Something for the Boudoir (Lingerie)", "Something for the Tresses (Hair)", 
-        "Something for the Smell (Fragrance)", "Something Blue", "Something for the Nails", 
-        "Something for Home", "Something for the Glow (Makeup)"
+        { title: "Something for the Skin", desc: "A focused facial treatment or premium skincare essential designed for a moment of deep pampering. ✨ This gift ensures her skin stays radiant and refreshed throughout the wedding festivities. 🧖‍♀️" },
+        { title: "Something for the Body", desc: "A luxury body care treat designed for total relaxation. 🛁 Whether it’s for a long soak or post-shower hydration, this category focuses on making her daily routine feel like a high-end ritual. 🧴" },
+        { title: "Something for the Honeymoon (Pleasure)", desc: "A playful addition to the bedroom to spice things up. 🔥 This is the perfect opportunity to gift a high-quality intimacy toy or some cheeky handcuffs to ensure the post-wedding getaway is extra memorable. 😉" },
+        { title: "Something Boudoir (Lingerie)", desc: "A single, high-quality garment that feels sophisticated and special. 🫦 Rather than a full set, this focuses on one standout piece that makes her feel beautiful and confident. 💃" },
+        { title: "Something for the Tresses (Hair)", desc: "A premium hair care treat or luxury styling tool to keep her locks looking their best. 💇‍♀️ This category is all about maintaining shine and health from the engagement party to the big day. ✨" },
+        { title: "Something for the Smell (Fragrance)", desc: "A signature scent or luxury perfume that leaves a lasting impression. 🌸 This gift adds a touch of elegance and mystery to her daily routine, perfect for creating wedding memories. ☁️" },
+        { title: "Something Blue", desc: "An homage to the classic bridal tradition symbolizing love and fidelity. 💎 Think of a subtle accessory, a piece of delicate jewelry, or a hidden detail to bring her luck. 💙" },
+        { title: "Something for the Nails", desc: "A gift voucher to a neighborhood nail spa for essential pre-wedding pampering. 💅 This ensures she has a polished look for the ceremony and a moment of calm. ✨" },
+        { title: "Something for Home", desc: "A thoughtful addition to her living space that creates a serene atmosphere. 🏠 This category focuses on setting the mood at home, helping her unwind in her Long Island residence. 🕯️" },
+        { title: "Something for the Glow (Makeup)", desc: "A luxe makeup gift or illuminating highlight that brings an extra glow. 💄 This is the finishing touch to help her feel her most luminous during all her celebratory appearances. ✨" }
     ];
 
     const specialAssignments = {
         "Bhakti": "Something for the Smell (Fragrance)",
-        "Alisha": "Something for the Boudoir (Lingerie)",
-        "Michaela": "Something for the Boudoir (Lingerie)",
-        "Alisha and Michaela": "Something for the Boudoir (Lingerie)",
-        "Michaela and Alisha": "Something for the Boudoir (Lingerie)"
+        "Alisha": "Something Boudoir (Lingerie)",
+        "Michaela": "Something Boudoir (Lingerie)",
+        "Alisha and Michaela": "Something Boudoir (Lingerie)",
+        "Michaela and Alisha": "Something Boudoir (Lingerie)"
     };
 
     let currentUser = "";
@@ -75,7 +82,6 @@
     window.enterApp = async function() {
         const nameInput = document.getElementById('userName').value.trim();
         if (!nameInput) return alert("Please enter your name!");
-        
         currentUser = nameInput;
         
         const snapshot = await get(chitsRef);
@@ -96,46 +102,43 @@
         runTransaction(chitsRef, (currentChits) => {
             if (!currentChits || currentChits.length === 0) return currentChits;
 
-            let picked = "";
+            let pickedObj = null;
             let indexToRemove = -1;
-            const assignedValue = specialAssignments[currentUser];
+            const assignedTitle = specialAssignments[currentUser];
             
-            if (assignedValue && currentChits.includes(assignedValue)) {
-                picked = assignedValue;
-                indexToRemove = currentChits.indexOf(assignedValue);
+            if (assignedTitle && currentChits.some(c => c.title === assignedTitle)) {
+                indexToRemove = currentChits.findIndex(c => c.title === assignedTitle);
+                pickedObj = currentChits[indexToRemove];
             } else {
-                const reservedValues = Object.values(specialAssignments);
-                const trulyRandomPool = currentChits.filter(c => !reservedValues.includes(c));
+                const reservedTitles = Object.values(specialAssignments);
+                const trulyRandomPool = currentChits.filter(c => !reservedTitles.includes(c.title));
                 
-                if (trulyRandomPool.length > 0) {
-                    picked = trulyRandomPool[Math.floor(Math.random() * trulyRandomPool.length)];
-                } else {
-                    picked = currentChits[Math.floor(Math.random() * currentChits.length)];
-                }
-                indexToRemove = currentChits.indexOf(picked);
+                let selectedFrom = trulyRandomPool.length > 0 ? trulyRandomPool : currentChits;
+                indexToRemove = currentChits.indexOf(selectedFrom[Math.floor(Math.random() * selectedFrom.length)]);
+                pickedObj = currentChits[indexToRemove];
             }
 
             if (indexToRemove > -1) {
                 currentChits.splice(indexToRemove, 1);
-                hat.setAttribute('data-last-picked', picked);
+                hat.setAttribute('data-last-title', pickedObj.title);
+                hat.setAttribute('data-last-desc', pickedObj.desc);
                 return currentChits;
             }
         }).then(async () => {
-            const finalPick = hat.getAttribute('data-last-picked');
-            if (finalPick) {
-                // Save the result to the selections folder in Firebase
+            const title = hat.getAttribute('data-last-title');
+            const desc = hat.getAttribute('data-last-desc');
+            
+            if (title) {
                 const selectionRef = ref(db, 'selections/' + currentUser);
                 await set(selectionRef, {
                     name: currentUser,
-                    chit: finalPick,
+                    gift: title,
                     timestamp: new Date().toLocaleString()
                 });
 
-                resultDiv.innerHTML = `You picked: <br><span style="color:#e74c3c; font-size:1.4rem;">${finalPick}</span>`;
+                resultDiv.innerHTML = `<span class="gift-title">${title}</span><span class="gift-desc">${desc}</span>`;
                 hat.classList.add('disabled');
                 updateCounter();
-            } else {
-                resultDiv.innerText = "The hat is empty!";
             }
         });
     };
@@ -143,7 +146,7 @@
     async function updateCounter() {
         const snapshot = await get(chitsRef);
         const count = snapshot.exists() ? snapshot.val().length : 0;
-        document.getElementById('counter').innerText = `${count} chits remaining in the hat.`;
+        document.getElementById('counter').innerText = `${count} gifts remaining in the hat.`;
     }
 </script>
 
