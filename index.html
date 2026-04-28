@@ -60,21 +60,21 @@
         { title: "Something for the Skin", desc: "A focused facial treatment or premium skincare essential designed for a moment of deep pampering. ✨ This gift ensures her skin stays radiant and refreshed throughout the wedding festivities. 🧖‍♀️" },
         { title: "Something for the Body", desc: "A luxury body care treat designed for total relaxation. 🛁 Whether it’s for a long soak or post-shower hydration, this category focuses on making her daily routine feel like a high-end ritual. 🧴" },
         { title: "Something for the Honeymoon (Pleasure)", desc: "A playful addition to the bedroom to spice things up. 🔥 This is the perfect opportunity to gift a high-quality intimacy toy or some cheeky handcuffs to ensure the post-wedding getaway is extra memorable. 😉" },
-        { title: "Something Boudoir (Lingerie)", desc: "A single, high-quality garment that feels sophisticated and special. 🫦 Rather than a full set, this focuses on one standout piece that makes her feel beautiful and confident. 💃" },
+        { title: "Something for the Boudoir (Lingerie)", desc: "A single, high-quality garment that feels sophisticated and special. 🫦 Rather than a full set, this focuses on one standout piece that makes her feel beautiful and confident. 💃" },
         { title: "Something for the Tresses (Hair)", desc: "A premium hair care treat or luxury styling tool to keep her locks looking their best. 💇‍♀️ This category is all about maintaining shine and health from the engagement party to the big day. ✨" },
         { title: "Something for the Smell (Fragrance)", desc: "A signature scent or luxury perfume that leaves a lasting impression. 🌸 This gift adds a touch of elegance and mystery to her daily routine, perfect for creating wedding memories. ☁️" },
         { title: "Something Blue", desc: "An homage to the classic bridal tradition symbolizing love and fidelity. 💎 Think of a subtle accessory, a piece of delicate jewelry, or a hidden detail to bring her luck. 💙" },
-        { title: "Something for the Nails", desc: "A gift voucher to a neighborhood nail spa for essential pre-wedding pampering. 💅 This ensures she has a polished look for the ceremony and a moment of calm. ✨" },
+        { title: "Something for Nails", desc: "A gift voucher to a neighborhood nail spa for essential pre-wedding pampering. 💅 This ensures she has a polished look for the ceremony and a moment of calm. ✨" },
         { title: "Something for Home", desc: "A thoughtful addition to her living space that creates a serene atmosphere. 🏠 This category focuses on setting the mood at home, helping her unwind in her Long Island residence. 🕯️" },
         { title: "Something for the Glow (Makeup)", desc: "A luxe makeup gift or illuminating highlight that brings an extra glow. 💄 This is the finishing touch to help her feel her most luminous during all her celebratory appearances. ✨" }
     ];
 
     const specialAssignments = {
         "Bhakti": "Something for the Smell (Fragrance)",
-        "Alisha": "Something for the Honeymoon (Pleasure)",
-        "Michaela": "Something for the Honeymoon (Pleasure)",
-        "Alisha and Michaela": "Something for the Honeymoon (Pleasure)",
-        "Michaela and Alisha": "Something for the Honeymoon (Pleasure)"
+        "Alisha": "Something for the Boudoir (Lingerie)",
+        "Michaela": "Something for the Boudoir (Lingerie)",
+        "Alisha and Michaela": "Something for the Boudoir (Lingerie)",
+        "Michaela and Alisha": "Something for the Boudoir (Lingerie)"
     };
 
     let currentUser = "";
@@ -102,48 +102,53 @@
         runTransaction(chitsRef, (currentChits) => {
             if (!currentChits || currentChits.length === 0) return currentChits;
 
-            let picked = "";
+            let pickedObj = null;
             let indexToRemove = -1;
-            const assignedValue = specialAssignments[currentUser];
+            const assignedTitle = specialAssignments[currentUser];
             
-            if (assignedValue && currentChits.includes(assignedValue)) {
-                picked = assignedValue;
-                indexToRemove = currentChits.indexOf(assignedValue);
+            if (assignedTitle && currentChits.some(c => c.title === assignedTitle)) {
+                indexToRemove = currentChits.findIndex(c => c.title === assignedTitle);
+                pickedObj = currentChits[indexToRemove];
             } else {
-                const reservedValues = Object.values(specialAssignments);
-                const trulyRandomPool = currentChits.filter(c => !reservedValues.includes(c));
+                const reservedTitles = Object.values(specialAssignments);
+                const trulyRandomPool = currentChits.filter(c => !reservedTitles.includes(c.title));
                 
-                if (trulyRandomPool.length > 0) {
-                    picked = trulyRandomPool[Math.floor(Math.random() * trulyRandomPool.length)];
-                } else {
-                    picked = currentChits[Math.floor(Math.random() * currentChits.length)];
-                }
-                indexToRemove = currentChits.indexOf(picked);
+                let selectedFrom = trulyRandomPool.length > 0 ? trulyRandomPool : currentChits;
+                indexToRemove = currentChits.indexOf(selectedFrom[Math.floor(Math.random() * selectedFrom.length)]);
+                pickedObj = currentChits[indexToRemove];
             }
 
             if (indexToRemove > -1) {
                 currentChits.splice(indexToRemove, 1);
-                hat.setAttribute('data-last-picked', picked);
+                hat.setAttribute('data-last-title', pickedObj.title);
+                hat.setAttribute('data-last-desc', pickedObj.desc);
                 return currentChits;
             }
         }).then(async () => {
-            const finalPick = hat.getAttribute('data-last-picked');
-            if (finalPick) {
-                // --- NEW LOGGING LOGIC ---
-                // This saves the result to a "selections" folder in Firebase
+            const title = hat.getAttribute('data-last-title');
+            const desc = hat.getAttribute('data-last-desc');
+            
+            if (title) {
                 const selectionRef = ref(db, 'selections/' + currentUser);
                 await set(selectionRef, {
                     name: currentUser,
-                    chit: finalPick,
+                    gift: title,
                     timestamp: new Date().toLocaleString()
                 });
-                // -------------------------
 
-                resultDiv.innerHTML = `You picked: <br><span style="color:#e74c3c; font-size:1.4rem;">${finalPick}</span>`;
+                resultDiv.innerHTML = `<span class="gift-title">${title}</span><span class="gift-desc">${desc}</span>`;
                 hat.classList.add('disabled');
                 updateCounter();
-            } else {
-                resultDiv.innerText = "The hat is empty!";
             }
         });
     };
+
+    async function updateCounter() {
+        const snapshot = await get(chitsRef);
+        const count = snapshot.exists() ? snapshot.val().length : 0;
+        document.getElementById('counter').innerText = `${count} gifts remaining in the hat.`;
+    }
+</script>
+
+</body>
+</html>
