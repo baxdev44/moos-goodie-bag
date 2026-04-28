@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moos Goodie Bag - Virtual Hat</title>
+    <style>
+        body { font-family: 'Avenir', Helvetica, Arial, sans-serif; background: #f4f7f6; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .container { background: white; padding: 40px; border-radius: 20px; box-shadow: 0 15px 35px rgba(0,0,0,0.1); text-align: center; width: 340px; }
+        .hat { font-size: 100px; cursor: pointer; transition: 0.3s; filter: drop-shadow(0 5px 15px rgba(0,0,0,0.1)); }
+        .hat:hover { transform: scale(1.1) rotate(-5deg); }
+        .hat.disabled { opacity: 0.3; cursor: not-allowed; pointer-events: none; }
+        input { width: 100%; padding: 12px; margin: 15px 0; border: 2px solid #eee; border-radius: 8px; box-sizing: border-box; font-size: 1rem; }
+        button { background: #333; color: white; border: none; padding: 14px 24px; border-radius: 8px; cursor: pointer; width: 100%; font-weight: bold; font-size: 1rem; }
+        #result { margin-top: 20px; font-weight: bold; color: #2c3e50; min-height: 60px; line-height: 1.4; }
+        .hidden { display: none; }
+        #counter { margin-top: 15px; font-size: 0.85rem; color: #95a5a6; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div id="login-screen">
+        <h2>Moos Goodie Bag</h2>
+        <p>Enter your name to start</p>
+        <input type="text" id="userName" placeholder="Your Name">
+        <button onclick="enterApp()">Join Draw</button>
+    </div>
+
+    <div id="draw-screen" class="hidden">
+        <h3 id="greeting"></h3>
+        <div id="hatIcon" class="hat" onclick="pickChit()">🎩</div>
+        <div id="result">Tap the hat to reveal your chit</div>
+        <p id="counter"></p>
+    </div>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, get, set, runTransaction } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    // Firebase Config
+    const firebaseConfig = {
+        apiKey: "AIzaSyCaZPkub3eDJfLJ1CJldNIy-zMolKn3Wlo",
+        authDomain: "moos-goodie-bag.firebaseapp.com",
+        databaseURL: "https://moos-goodie-bag-default-rtdb.firebaseio.com",
+        projectId: "moos-goodie-bag",
+        storageBucket: "moos-goodie-bag.firebasestorage.app",
+        messagingSenderId: "1092557866155",
+        appId: "1:1092557866155:web:492ca076c50378e6c563ee",
+        measurementId: "G-0Q2GEW9CXF"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const chitsRef = ref(db, 'hat/availableChits');
+
+    const initialChits = [
+        "Something for the Skin", "Something for the Body", "Something for the Honeymoon (Pleasure)", 
+        "Something for the Boudoir (Lingerie)", "Something for the Tresses (Hair)", 
+        "Something for the Smell (Fragrance)", "Something Blue", "Something for the Nails", 
+        "Something for Home", "Something for the Glow (Makeup)"
+    ];
+
+    const specialAssignments = {
+        "Bhakti": "Something for the Smell (Fragrance)",
+        "Alisha": "Something for the Boudoir (Lingerie)",
+        "Michaela": "Something for the Boudoir (Lingerie)",
+        "Alisha and Michaela": "Something for the Boudoir (Lingerie)",
+        "Michaela and Alisha": "Something for the Boudoir (Lingerie)"
+    };
+
+    let currentUser = "";
+
+    window.enterApp = async function() {
+        const nameInput = document.getElementById('userName').value.trim();
+        if (!nameInput) return alert("Please enter your name!");
+        
+        currentUser = nameInput;
+        
+        const snapshot = await get(chitsRef);
+        if (!snapshot.exists()) {
+            await set(chitsRef, initialChits);
+        }
+
+        document.getElementById('login-screen').classList.add('hidden');
+        document.getElementById('draw-screen').classList.remove('hidden');
+        document.getElementById('greeting').innerText = `Hello, ${currentUser}!`;
+        updateCounter();
+    };
+
+    window.pickChit = async function() {
+        const hat = document.getElementById('hatIcon');
+        const resultDiv = document.getElementById('result');
+
+        runTransaction(chitsRef, (currentChits) => {
+            if (!currentChits || currentChits.length === 0) return currentChits;
+
+            let picked = "";
+            let indexToRemove = -1;
+            const assignedValue = specialAssignments[currentUser];
+            
+            if (assignedValue && currentChits.includes(assignedValue)) {
+                picked = assignedValue;
+                indexToRemove = currentChits.indexOf(assignedValue);
+            } else {
+                const reservedValues = Object.values(specialAssignments);
+                const trulyRandomPool = currentChits.filter(c => !reservedValues.includes(c));
+                
+                if (trulyRandomPool.length > 0) {
+                    picked = trulyRandomPool[Math.floor(Math.random() * trulyRandomPool.length)];
+                } else {
+                    picked = currentChits[Math.floor(Math.random() * currentChits.length)];
+                }
+                indexToRemove = currentChits.indexOf(picked);
+            }
+
+            if (indexToRemove > -1) {
+                currentChits.splice(indexToRemove, 1);
+                hat.setAttribute('data-last-picked', picked);
+                return currentChits;
+            }
+        }).then(() => {
+            const finalPick = hat.getAttribute('data-last-picked');
+            if (finalPick) {
+                resultDiv.innerHTML = `You picked: <br><span style="color:#e74c3c; font-size:1.4rem;">${finalPick}</span>`;
+                hat.classList.add('disabled');
+                updateCounter();
+            } else {
+                resultDiv.innerText = "The hat is empty!";
+            }
+        });
+    };
+
+    async function updateCounter() {
+        const snapshot = await get(chitsRef);
+        const count = snapshot.exists() ? snapshot.val().length : 0;
+        document.getElementById('counter').innerText = `${count} chits remaining in the hat.`;
+    }
+</script>
+
+</body>
+</html>
